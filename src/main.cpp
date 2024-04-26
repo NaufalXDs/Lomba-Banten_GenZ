@@ -1,137 +1,100 @@
+/* Library Import */
 #include "Arduino.h"
-
-/* Include Library */
-#include "NtpClient.h"
-#include "Adafruit_Sensor.h"
+#include "Wire.h"
 #include "DHT.h"
 #include "DHT_U.h"
-#include "ESP8266HTTPClient.h"
-#include "dev-env.h"
-#include "Adafruit_GFX.h"
 #include "Adafruit_SSD1306.h"
-#include "Adafruit_Sensor.h"
-#include "Adafruit_I2CDevice.h"
-#include "SPI.h"
-#include "Wire.h"
+#include "ESP8266HTTPClient.h"
+#include "ESP8266WiFi.h"
+#include "dev-env.h"
 
-#if defined(ESP32)
-    #include "Wifi.h"
-#elif defined(ESP8266)
-    #include "ESP8266WiFi.h"
-#endif
+/* Variable Deklar */
+#define DHT_PIN 2 //D4
+#define Relay_pin 0 //D3
+#define Soil_Moisture A0
 
-/* Pin Definition */
-#define DHT_PIN 2
-#define DHT_TYPE DHT22
-#define Relay 3
-#define Kelembapan A0
+#define DHT_TYPE DHT11
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
 
-/* Varible Declaration */
-uint32_t delayMS;
 DHT_Unified dht(DHT_PIN, DHT_TYPE);
-Adafruit_SSD1306 display(128, 64, &Wire, -1);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+void kelembapan()
+{
+    int value = analogRead(Soil_Moisture);
+    Serial.println(F("Kelembapan: "));
+    Serial.println(value);
 
-void temperature() {
-    delay(delayMS);
+    if (value > 380)
+    {
+        digitalWrite(Relay_pin, HIGH);
+        Serial.println("Relay status: ON");
+        // display.setCursor(0, 63);
+        display.print("Kelembapan: ");
+        display.println(value);
+    }
+    else if (value < 275)
+    {
+        digitalWrite(Relay_pin, LOW);
+        Serial.println("Relay status: OFF");
+        // display.setCursor(0, 63);
+        display.print("Kelembapan: ");
+        display.println(value);
+    }
+}
+
+void temp()
+{
     sensors_event_t event;
     dht.temperature().getEvent(&event);
     if (isnan(event.temperature))
     {
-        Serial.println(F("Error reading temperature"));
+        Serial.println(F("Error reading temperature!"));
     }
     else
     {
         Serial.print(F("Temperature: "));
         Serial.print(event.temperature);
         Serial.println(F("°C"));
-    }
-
-    dht.humidity().getEvent(&event);
-    if (isnan(event.relative_humidity))
-    {
-        Serial.println(F("Error reading humidity"));
-    }
-    else
-    {
-        Serial.print(F("Humidity: "));
-        Serial.print(event.relative_humidity);
-        Serial.println(F("%"));
+        display.clearDisplay();
+        display.setTextSize(1);
+        display.setTextColor(SSD1306_WHITE);
+        display.setCursor(0, 0);
+        display.print(F("Temperature: "));
+        display.print(event.temperature);
+        display.print(F("°C"));
+        display.display();
+        Serial.print(F("Value: "));
+        Serial.println(event.temperature);
     }
 }
 
-void kelembapan() {
-    int value = analogRead(Kelembapan);
-    Serial.println(F("Kelembapan: ")); Serial.println(value);
 
-    if (value > 380) {
-        digitalWrite(Relay, HIGH);
-        display.setCursor(0, 63);
-        display.print("Kelembapan: ");
-        display.println(value);
-    } else if (value < 275) {
-        digitalWrite(Relay, LOW);
-        display.setCursor(0, 63);
-        display.print("Kelembapan: ");
-        display.println(value);
-    }
-}
-
-void setup()
-{
+void setup() {
     Serial.begin(115200);
-    /* Pin Setup */
-    pinMode(Relay, OUTPUT);
-    pinMode(Kelembapan, INPUT);
-
-    /* DHT22 Sensor */
-    dht.begin();
-
-    Serial.println("DHT22 Sensor");
-    sensor_t sensor;
-    dht.temperature().getSensor(&sensor);
-    dht.humidity().getSensor(&sensor);
-
-    Serial.println("Temp Sensor");
-    Serial.print(F("Sensor Temp")); Serial.print(sensor.resolution); Serial.println(F("°C"));
-
-    Serial.println("Humidity Sensor");
-    Serial.print(F("Sensor Humidity")); Serial.print(sensor.resolution); Serial.println(F("%"));
-
-    /* Wifi Connection */
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
-        delay(600);
-        Serial.print(".");
+        delay(1000);
+        Serial.println("Connecting to WiFi..");
     }
-    Serial.print(F("WiFi connected")); Serial.println(WiFi.localIP());
+    Serial.println("WiFi connected successfully!");
+    Serial.println(WiFi.localIP());
 
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(46, 10);
-    display.println("Wifi Connected");
-    display.setCursor(46, 26);
-    display.println(WiFi.localIP());
-    display.display();
-
-    /* OLED Display */
-
-    if (display.begin(SSD1306_SWITCHCAPVCC, 0x3C) != 0) {
+    if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3D)) { // Address 0x3D untuk 128x64
         Serial.println(F("SSD1306 allocation failed"));
+        for(;;);
     }
 
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(0,0);
-    display.println(F("Hello, World!"));
-    display.display();
+    dht.begin();
+
+    pinMode(Relay_pin, OUTPUT);
+    pinMode(Soil_Moisture, INPUT);
 }
 
-void loop() 
-{
-    // temperature();
-    // kelembapan();
-    // delay(1000);
+void loop() {
+    kelembapan();
+    // temp();
+    delay(2000);
 }
-
-
