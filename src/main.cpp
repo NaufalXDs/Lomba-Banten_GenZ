@@ -35,31 +35,18 @@ void kelembapan()
     Serial.println(value);
     Blynk.virtualWrite(V0, value);
 
-    if (value > 380)
+    if (value >= 273 && value <= 380)
     {
         digitalWrite(Relay_pin, HIGH);
-        Serial.println("Relay status: ON");
-        display.print("Kelembapan: ");
-        display.println(value);
-    }
-    else if (value < 275)
-    {
-        digitalWrite(Relay_pin, LOW);
         Serial.println("Relay status: OFF");
         display.print("Kelembapan: ");
         display.println(value);
     }
-    else if (value >= 300 && value <= 700)
+
+    else if (value > 600)
     {
-        digitalWrite(Relay_pin, HIGH);
-        Serial.println("Relay status: ON");
-        display.print("Kelembapan: ");
-        display.println(value);
-    }
-    else if (value > 700)
-    {
-        digitalWrite(Relay_pin, HIGH);
-        Serial.println("Relay status: ON");
+        digitalWrite(Relay_pin, LOW);
+        Serial.println("Relay status: OFF");
         display.print("Kelembapan: ");
         display.println(value);
     }
