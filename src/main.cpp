@@ -12,10 +12,11 @@
 #include "Adafruit_Sensor.h"
 
 /* Variable Deklar */
-#define DHT_PIN 2   // D4
-#define Relay_pin 0 // D3
+#define DHT_PIN 0   // D3
+#define Relay_pin 2 // D4
 #define Soil_Moisture A0
-#define Buzzer_pin 14 // D5
+#define ldr_pin 16 //D0
+#define led 16 //D0
 
 #define DHT_TYPE DHT11
 #define SCREEN_WIDTH 128
@@ -38,8 +39,6 @@ void kelembapan()
     {
         digitalWrite(Relay_pin, HIGH);
         Serial.println("Relay status: ON");
-        noTone(Buzzer_pin); // Buzzer_pin will sound with a tone of 1000 Hz
-        // display.setCursor(0, 63);
         display.print("Kelembapan: ");
         display.println(value);
     }
@@ -47,8 +46,6 @@ void kelembapan()
     {
         digitalWrite(Relay_pin, LOW);
         Serial.println("Relay status: OFF");
-        tone(Buzzer_pin, 500); // Buzzer will sound with a tone of 500 Hz
-        // display.setCursor(0, 63);
         display.print("Kelembapan: ");
         display.println(value);
     }
@@ -56,8 +53,6 @@ void kelembapan()
     {
         digitalWrite(Relay_pin, HIGH);
         Serial.println("Relay status: ON");
-        noTone(Buzzer_pin); // Buzzer_pin will sound with a tone of 1000 Hz
-        // display.setCursor(0, 63);
         display.print("Kelembapan: ");
         display.println(value);
     }
@@ -65,8 +60,6 @@ void kelembapan()
     {
         digitalWrite(Relay_pin, HIGH);
         Serial.println("Relay status: ON");
-        noTone(Buzzer_pin); // Buzzer_pin will sound with a tone of 1000 Hz
-        // display.setCursor(0, 63);
         display.print("Kelembapan: ");
         display.println(value);
     }
@@ -101,6 +94,17 @@ void dht11() {
     }
 }
 
+void lampu() {
+    int ldrStatus = digitalRead(ldr_pin); // Membaca status dari LDR
+    if (ldrStatus == HIGH) {
+        digitalWrite(led, HIGH); // Menyalakan LED
+        Serial.println("LED menyala karena LDR terdeteksi cahaya");
+    } else {
+        digitalWrite(led, LOW); // Mematikan LED
+        Serial.println("LED mati karena LDR tidak terdeteksi cahaya");
+    }
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -113,19 +117,14 @@ void setup()
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3D))
     { // Address 0x3D untuk 128x64
         Serial.println(F("SSD1306 allocation failed"));
-        for (;;)
-            ;
+        for (;;);
     }
 
     pinMode(Relay_pin, OUTPUT);
-    pinMode(Buzzer_pin, OUTPUT);
     pinMode(Soil_Moisture, INPUT);
     pinMode(DHT_PIN, INPUT);
     timer.setInterval(1000L, kelembapan);
     timer.setInterval(1000L, dht11);
-
-    digitalWrite(Buzzer_pin, LOW);
-    noTone(Buzzer_pin);
 
     /* DHT22 Sensor */
     dht.begin();
@@ -144,6 +143,7 @@ void setup()
 
 void loop()
 {
+    lampu();
     kelembapan();
     dht11();
     Blynk.run();
