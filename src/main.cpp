@@ -4,11 +4,11 @@
 #include "DHT.h"
 #include "DHT_U.h"
 #include "Adafruit_SSD1306.h"
-#include "ESP8266HTTPClient.h"
-#include "ESP8266WiFi.h"
+#include "HTTPClient.h"
+#include "WiFi.h"
 #include "dev-env.h"
 #include "Blynk.h"
-#include "BlynkSimpleEsp8266.h"
+#include "BlynkSimpleEsp32.h"
 #include "Adafruit_Sensor.h"
 
 /* Variable Deklar */
