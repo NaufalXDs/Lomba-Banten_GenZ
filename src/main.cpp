@@ -1,120 +1,202 @@
 #include "Arduino.h"
-#include "Adafruit_Sensor.h"
 #include "DHT.h"
-#include "DHT_U.h"
-#include "ESP8266HTTPClient.h"
 #include "dev-env.h"
-// #include "Blynk.h"
-// #include "BlynkSimpleEsp8266.h"
+#include "Blynk.h"
+#include "BlynkSimpleEsp8266.h"
+#include "Adafruit_Sensor.h"
+#include "Wire.h"
+#include "LiquidCrystal_I2C.h"
 
-/* Variable Deklar */
-#define DHT_PIN 0   // D3
-#define Soil_Moisture A0
-#define ldr_pin 16 // D0
-#define led 16     // D0
+#define DHTPIN D3
+#define DHTTYPE DHT22
+#define Ldr D0
+#define Relay_Pump D4
+#define Relay_Lamp D5
 
-#define DHT_TYPE DHT22
-const int Relay_pin[] = {2, 14};
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+BlynkTimer timer;
 
-uint32_t delayMS;
-DHT_Unified dht(DHT_PIN, DHT_TYPE);
-// BlynkTimer timer;
+#define detik1 (2 * 1000)
+unsigned long detik1_terakhir = 0L;
 
-void kelembapan()
+#define detik2 (7 * 1000)           // Menambahkan definisi untuk detik2
+unsigned long detik2_terakhir = 0L; // Menambahkan variabel untuk melacak waktu terakhir detik2
+
+static bool displayTempHumidity = true;
+
+void LDR()
 {
-    int value = analogRead(Soil_Moisture);
-    Serial.println(F("Kelembapan: "));
-    Serial.println(value);
-    // Blynk.virtualWrite(V0, value);
-
-    if (value >= 273 && value <= 380)
+    int ldrValue = digitalRead(Ldr);
+    if (ldrValue == 1)
     {
-        digitalWrite(Relay_pin[0], HIGH);
-        Serial.println("Relay status: OFF");
+        digitalWrite(Relay_Lamp, LOW);
     }
-
-    else if (value > 600)
+    else
     {
-        digitalWrite(Relay_pin[0], LOW);
-        Serial.println("Relay status: OFF");
+        digitalWrite(Relay_Lamp, HIGH);
     }
+    Serial.print("LDR: ");
+    Serial.print(ldrValue);
+    Serial.println("");
+
+    Blynk.virtualWrite(V6, ldrValue);
+}
+
+// void lcdDisplay()
+// {
+//     lcd.clear();
+//     lcd.setCursor(0, 0);
+//     lcd.print("Humidity: ");
+//     lcd.print(dht.readHumidity());
+//     lcd.print("%");
+//     lcd.setCursor(0, 1);
+//     lcd.print("Temp: ");
+//     lcd.print(dht.readTemperature());
+//     lcd.print("C");
+//     lcd.clear();
+//     lcd.setCursor(0, 0);
+//     lcd.print("Kelembapan: ");
+//     lcd.setCursor(0, 1);
+//     lcd.print(analogRead(A0));
+// }
+
+void SoilMoisture()
+{
+    int soilMoisture = analogRead(A0);
+    Serial.print("Soil Moisture: Kelembapan= ");
+    Serial.print(soilMoisture);
+    Serial.println();
+    if (soilMoisture >= 380)
+    {
+        digitalWrite(Relay_Pump, LOW);
+        Serial.println("Relay Menyala >= 380");
+    }
+    else if (soilMoisture < 240)
+    {
+        digitalWrite(Relay_Pump, LOW);
+        Serial.println("Relay Mati < 240");
+    }
+    else
+    {
+        digitalWrite(Relay_Pump, HIGH);
+        Serial.println("Relay Mati");
+    }
+    Blynk.virtualWrite(V0, soilMoisture);
 }
 
 void dht22()
 {
-    delay(delayMS);
-    sensors_event_t event;
-    dht.temperature().getEvent(&event);
-    if (isnan(event.temperature))
+    float h = dht.readHumidity();
+    float t = dht.readTemperature();
+
+    if (isnan(h) || isnan(t))
     {
-        Serial.println(F("Error reading temperature"));
+        Serial.println("Failed to read from DHT sensor!");
+        return;
     }
-    else
-    {
-        Serial.print(F("Temperature: "));
-        Serial.print(event.temperature);
-        Serial.println(F("°C"));
-        // Blynk.virtualWrite(V1, event.temperature);
-    }
-    dht.humidity().getEvent(&event);
-    if (isnan(event.relative_humidity))
-    {
-        Serial.println(F("Error reading humidity"));
-    }
-    else
-    {
-        Serial.print(F("Humidity: "));
-        Serial.print(event.relative_humidity);
-        Serial.println(F("%"));
-        // Blynk.virtualWrite(V2, event.relative_humidity);
-    }
+
+    Serial.print("DHT22: Humidity = ");
+    Serial.print(h);
+    Serial.print("%  Temperature = ");
+    Serial.print(t);
+    Serial.println(" °C");
+    Blynk.virtualWrite(V5, h);
+    Blynk.virtualWrite(V4, t);
 }
 
 void setup()
 {
+    /* Serial Monitor Baud */
     Serial.begin(115200);
-    // Blynk.begin(auth, ssid, password);
-    // while (Blynk.connected() == false)
-    // {
-    //     Blynk.connect();
-    //     delay(1000);
-    // }
 
-    pinMode(Relay_pin[0], OUTPUT);
-    pinMode(Relay_pin[1], OUTPUT);
-    pinMode(DHT_PIN, INPUT);
-    // timer.setInterval(1000L, kelembapan);
-    // timer.setInterval(1000L, dht22);
+    /* Lcd Setup */
+    lcd.init();
+    lcd.backlight();
 
-    /* DHT22 Sensor */
+    /* Blynk Setup */
+    Blynk.begin(BLYNK_AUTH, ssid, password);
+    if (!Blynk.connected())
+    {
+        Serial.println(" ");
+        Serial.print("SYSTEM: GAGAL Connected ke Blynk Server #1 ");
+        lcd.setCursor(0, 0);
+        lcd.print("Gagal Connect Wifi");
+    }
+    timer.setInterval(1000L, SoilMoisture);
+    timer.setInterval(1000L, dht22);
+    timer.setInterval(1000L, LDR);
+
+    /* Dht22 Setup */
     dht.begin();
 
-    Serial.println("DHT22 Sensor");
-    sensor_t sensor;
-    dht.temperature().getSensor(&sensor);
-    dht.humidity().getSensor(&sensor);
-
-    Serial.println("Temp Sensor");
-    Serial.print(F("Sensor Temp"));
-    Serial.print(sensor.resolution);
-    Serial.println(F("°C"));
-
-    Serial.println("Humidity Sensor");
-    Serial.print(F("Sensor Humidity"));
-    Serial.print(sensor.resolution);
-    Serial.println(F("%"));
+    /* Pin Setup */
+    pinMode(Relay_Lamp, OUTPUT);
+    pinMode(Relay_Pump, OUTPUT);
+    digitalWrite(Relay_Lamp, HIGH);
+    digitalWrite(Relay_Pump, HIGH);
+    lcd.setCursor(0, 0);
+    lcd.print("SMKN 2 TANGSEL");
+    lcd.setCursor(0, 1);
+    lcd.print("Smart Garden");
+    delay(2000);
+    lcd.clear();
+    // lcd.setCursor(0, 0);
+    // if (!Blynk.connect()){
+    //     lcd.setCursor(0, 0);
+    //     lcd.print("Cannot Connect");
+    //     lcd.setCursor(5, 1);
+    //     lcd.print("Blynk Server");
+    // } else {
+    //     lcd.printss("SSID: ");
+    //     lcd.print(ssid);
+    // }
+    // delay(1000);
 }
 
-void loop() {
-    dht22();
-    kelembapan();
-    digitalWrite(Relay_pin[0], HIGH);
-    digitalWrite(Relay_pin[1], LOW);
-    Serial.println("relay HIGH");
-    delay(2000);
-    digitalWrite(Relay_pin[0], LOW);
-    digitalWrite(Relay_pin[1], HIGH);
-    Serial.println("relay low");
-    // Blynk.run();
-    delay(2000);
+void loop()
+{
+    static float lastHumidity = 0.0;
+    static float lastTemperature = 0.0;
+    static unsigned long lastUpdate = 0;
+    const long updateInterval = 5000;
+    
+    float currentHumidity = dht.readHumidity();
+    float currentTemperature = dht.readTemperature();
+
+    Blynk.run();
+    timer.run();
+    if (millis() - detik1_terakhir > detik1)
+    {
+        detik1_terakhir = millis();
+        dht22();
+        // lcdDisplay();
+        SoilMoisture();
+        LDR();
+        Serial.println(" ");
+    }
+
+    if (millis() - lastUpdate > updateInterval || lastHumidity != currentHumidity || lastTemperature != currentTemperature)
+    {
+        lastUpdate = millis();
+        lastHumidity = currentHumidity;
+        lastTemperature = currentTemperature;
+
+        lcd.clear();
+        if (displayTempHumidity)
+        {
+            lcd.setCursor(0, 0);
+            lcd.print("H:");
+            lcd.print(currentHumidity);
+            lcd.print("%");
+            lcd.setCursor(8, 0);
+            lcd.print("T:");
+            lcd.print(currentTemperature);
+            lcd.print("C");
+            lcd.setCursor(0, 1);
+            lcd.print("Kelembapan: ");
+            lcd.setCursor(12, 1);
+            lcd.print(analogRead(A0));
+        }
+    }
 }
