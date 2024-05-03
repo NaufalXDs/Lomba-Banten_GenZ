@@ -6,12 +6,16 @@
 #include "Adafruit_Sensor.h"
 #include "Wire.h"
 #include "LiquidCrystal_I2C.h"
+#include "ESP8266WiFiMulti.h"
 
 #define DHTPIN D3
 #define DHTTYPE DHT22
 #define Ldr D0
 #define Relay_Pump D4
 #define Relay_Lamp D5
+
+#define SERVER_TIMEOUT 5000
+#define WIFI_TIMEOUT 5000
 
 DHT dht(DHTPIN, DHTTYPE);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -24,6 +28,8 @@ unsigned long detik1_terakhir = 0L;
 unsigned long detik2_terakhir = 0L; // Menambahkan variabel untuk melacak waktu terakhir detik2
 
 static bool displayTempHumidity = true;
+
+ESP8266WiFiMulti wifiMulti;
 
 void LDR()
 {
@@ -105,6 +111,52 @@ void dht22()
     Blynk.virtualWrite(V4, t);
 }
 
+void wifiSelect()
+{
+    // ADD NEW CLIENTS HERE:
+    wifiMulti.addAP(ssid1, password1);
+    wifiMulti.addAP(ssid2, password2);
+    wifiMulti.addAP(ssid3, password3);
+
+    unsigned long startWiFi = millis();
+
+    while (wifiMulti.run() != WL_CONNECTED)
+    { // connect to the strongest of the networks above
+        Serial.println("");
+        Serial.println("WiFi connected");
+        Serial.println("IP address: ");
+        Serial.println(WiFi.localIP());
+
+        if (millis() > startWiFi + WIFI_TIMEOUT)
+        {
+            Serial.println("\tNo WiFi. ");
+            break;
+        }
+    }
+}
+
+void checkBlynk()
+{
+    if (wifiMulti.run() == WL_CONNECTED)
+    {
+        unsigned long startConnecting = millis();
+
+        while (!Blynk.connected())
+        {
+            Blynk.connect();
+
+            if (millis() > startConnecting + SERVER_TIMEOUT)
+            {
+                // Serial.print("\tUnable to connect to server. ");
+                break;
+            }
+        }
+    }
+
+    // if (WiFi.status() != 3) Serial.print("\tNo WiFi. ");
+    // Serial.printf("\tChecking again in %is.\n", BLYNK_CONNECTION_INTERVAL / 1000);
+    // Serial.println();
+}
 void setup()
 {
     /* Serial Monitor Baud */
@@ -115,14 +167,10 @@ void setup()
     lcd.backlight();
 
     /* Blynk Setup */
-    Blynk.begin(BLYNK_AUTH, ssid, password);
-    if (!Blynk.connected())
-    {
-        Serial.println(" ");
-        Serial.print("SYSTEM: GAGAL Connected ke Blynk Server #1 ");
-        lcd.setCursor(0, 0);
-        lcd.print("Gagal Connect Wifi");
-    }
+    wifiSelect();
+    Blynk.config(BLYNK_AUTH);
+    checkBlynk();
+
     timer.setInterval(1000L, SoilMoisture);
     timer.setInterval(1000L, dht22);
     timer.setInterval(1000L, LDR);
@@ -160,7 +208,7 @@ void loop()
     static float lastTemperature = 0.0;
     static unsigned long lastUpdate = 0;
     const long updateInterval = 5000;
-    
+
     float currentHumidity = dht.readHumidity();
     float currentTemperature = dht.readTemperature();
 
