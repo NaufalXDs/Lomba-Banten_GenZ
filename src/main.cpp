@@ -116,7 +116,9 @@ void wifiSelect()
     // ADD NEW CLIENTS HERE:
     wifiMulti.addAP(ssid1, password1);
     wifiMulti.addAP(ssid2, password2);
-    wifiMulti.addAP(ssid3, password3);
+    wifiMulti.addAP(ssid3, password3); 
+    wifiMulti.addAP(ssid4, password4); 
+    wifiMulti.addAP(ssid5, password5); 
 
     unsigned long startWiFi = millis();
 
@@ -126,6 +128,10 @@ void wifiSelect()
         Serial.println("WiFi connected");
         Serial.println("IP address: ");
         Serial.println(WiFi.localIP());
+        lcd.setCursor(0, 0);
+        lcd.print("IP address: ");
+        lcd.setCursor(0, 1);
+        lcd.print(WiFi.localIP());
 
         if (millis() > startWiFi + WIFI_TIMEOUT)
         {
