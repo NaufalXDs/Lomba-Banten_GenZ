@@ -113,7 +113,6 @@ void dht22()
 
 void wifiSelect()
 {
-    // ADD NEW CLIENTS HERE:
     wifiMulti.addAP(ssid1, password1);
     wifiMulti.addAP(ssid2, password2);
     wifiMulti.addAP(ssid3, password3); 
@@ -123,7 +122,7 @@ void wifiSelect()
     unsigned long startWiFi = millis();
 
     while (wifiMulti.run() != WL_CONNECTED)
-    { // connect to the strongest of the networks above
+    {
         Serial.println("");
         Serial.println("WiFi connected");
         Serial.println("IP address: ");
