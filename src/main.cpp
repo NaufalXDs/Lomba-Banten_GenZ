@@ -1,7 +1,6 @@
 #include "Arduino.h"
 #include "DHT.h"
 #include "DHT_U.h"
-#include "Adafruit_SSD1306.h"
 #include "HTTPClient.h"
 #include "WiFi.h"
 #include "dev-env.h"
@@ -9,7 +8,6 @@
 #include "BlynkSimpleEsp32.h"
 #include "Adafruit_Sensor.h"
 #include "Wire.h"
-#include "LiquidCrystal_I2C.h"
 #include "ESP8266WiFiMulti.h"
 
 #define DHTPIN D3
@@ -22,14 +20,13 @@
 #define WIFI_TIMEOUT 5000
 
 DHT dht(DHTPIN, DHTTYPE);
-LiquidCrystal_I2C lcd(0x27, 16, 2);
 BlynkTimer timer;
 
 #define detik1 (2 * 1000)
 unsigned long detik1_terakhir = 0L;
 
-#define detik2 (7 * 1000)           // Menambahkan definisi untuk detik2
-unsigned long detik2_terakhir = 0L; // Menambahkan variabel untuk melacak waktu terakhir detik2
+#define detik2 (7 * 1000)
+unsigned long detik2_terakhir = 0L;
 
 static bool displayTempHumidity = true;
 
@@ -52,24 +49,6 @@ void LDR()
 
     Blynk.virtualWrite(V6, ldrValue);
 }
-
-// void lcdDisplay()
-// {
-//     lcd.clear();
-//     lcd.setCursor(0, 0);
-//     lcd.print("Humidity: ");
-//     lcd.print(dht.readHumidity());
-//     lcd.print("%");
-//     lcd.setCursor(0, 1);
-//     lcd.print("Temp: ");
-//     lcd.print(dht.readTemperature());
-//     lcd.print("C");
-//     lcd.clear();
-//     lcd.setCursor(0, 0);
-//     lcd.print("Kelembapan: ");
-//     lcd.setCursor(0, 1);
-//     lcd.print(analogRead(A0));
-// }
 
 void SoilMoisture()
 {
@@ -161,10 +140,6 @@ void checkBlynk()
             }
         }
     }
-
-    // if (WiFi.status() != 3) Serial.print("\tNo WiFi. ");
-    // Serial.printf("\tChecking again in %is.\n", BLYNK_CONNECTION_INTERVAL / 1000);
-    // Serial.println();
 }
 void setup()
 {
@@ -198,17 +173,6 @@ void setup()
     lcd.print("Smart Garden");
     delay(2000);
     lcd.clear();
-    // lcd.setCursor(0, 0);
-    // if (!Blynk.connect()){
-    //     lcd.setCursor(0, 0);
-    //     lcd.print("Cannot Connect");
-    //     lcd.setCursor(5, 1);
-    //     lcd.print("Blynk Server");
-    // } else {
-    //     lcd.printss("SSID: ");
-    //     lcd.print(ssid);
-    // }
-    // delay(1000);
 }
 
 void loop()
@@ -227,7 +191,6 @@ void loop()
     {
         detik1_terakhir = millis();
         dht22();
-        // lcdDisplay();
         SoilMoisture();
         LDR();
         Serial.println(" ");
